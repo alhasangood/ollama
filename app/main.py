@@ -1,31 +1,22 @@
-import streamlit as st
-from langchain.document_loaders import UnstructuredFileLoader
-from langchain.embeddings import OllamaEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.llms import Ollama
-from langchain.chains import RetrievalQA
-import os
+from fastapi import FastAPI
+from pydantic import BaseModel
+import httpx
 
-st.title("Self-Hosted AI Document Q&A")
+app = FastAPI()
 
-uploaded_file = st.file_uploader("Upload document", type=["pdf", "docx", "txt", "xlsx"])
-query = st.text_input("Ask a question about the document:")
+class PromptRequest(BaseModel):
+    prompt: str
 
-if uploaded_file:
-    path = f"docs/{uploaded_file.name}"
-    with open(path, "wb") as f:
-        f.write(uploaded_file.read())
-
-    loader = UnstructuredFileLoader(path)
-    docs = loader.load()
-
-    embeddings = OllamaEmbeddings(model="llama3")
-    db = Chroma.from_documents(docs, embeddings)
-    retriever = db.as_retriever()
-
-    qa = RetrievalQA.from_chain_type(llm=Ollama(model="llama3"), retriever=retriever)
-
-    if query:
-        with st.spinner("Processing..."):
-            answer = qa.run(query)
-            st.success(answer)
+@app.post("/chat")
+async def chat_with_ollama(request: PromptRequest):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://ollama:11434/api/generate",
+            json={
+                "model": "llama3",  # غيّر الاسم حسب النموذج اللي منزل عليه
+                "prompt": request.prompt,
+                "stream": False
+            }
+        )
+    data = response.json()
+    return {"response": data.get("response", "")}
