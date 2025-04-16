@@ -1,9 +1,3 @@
-langchain
-chromadb
-unstructured
-pymupdf
-python-docx
-pandas
-openpyxl
-streamlit
-requests
+fastapi
+uvicorn
+httpx
